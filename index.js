@@ -1,44 +1,39 @@
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
 const AWS = require('aws-sdk')
 const addItem = require("./src/add_item")
 const loadItem = require("./src/load_item")
 const loadAllItems = require("./src/load_all_items")
+const listenContractEvents = require("./src/listen_contract_events")
 
 AWS.config.update({
     region: 'us-east-1'
 });
 
-module.exports = async (event) => {
-    let response;
+; (async (event) => {
+    listenContractEvents();
 
-    switch (true) {
-        case event.routeKey === "GET /games":
-            const games = await loadAllItems(AWS, 'games');
-            response = {
-                statusCode: 200,
-                body: JSON.stringify(games)
-            }
-            break;
-        case event.routeKey === "POST /games":
-            const newGame = JSON.parse(event.body);
-            const insert = await addItem(AWS, "games", newGame);
-            response = {
-                statusCode: 200,
-                body: JSON.stringify(newGame)
-            }
-            break;
-        case event.routeKey === "GET /players":
-            const players = await loadAllItems(AWS, "players");
-            response = {
-                statusCode: 200,
-                body: JSON.stringify(players)
-            }
-            break;
-        default:
-            response = {
-                statusCode: 400,
-                body: JSON.stringify("no path")
-            }
 
-    }
-    return response;
-};
+    app.use(express.json())
+    app.get('/', (req, res) => res.send('ping'));
+
+    app.get('/games', async (req, res) => {
+        const games = await loadAllItems(AWS, 'games');
+        res.send({ games });
+    });
+
+    app.post('/games', async (req, res) => {
+        const { game } = req.body;
+        const result = await addItem(AWS, "games", game);
+        res.send({ result });
+    });
+
+    app.get('/players', async (req, res) => {
+        const players = await loadAllItems(AWS, 'players');
+        res.send({ players });
+    });
+
+    app.listen(PORT, () => console.log(`Server running on port: ${PORT}`));
+})();
